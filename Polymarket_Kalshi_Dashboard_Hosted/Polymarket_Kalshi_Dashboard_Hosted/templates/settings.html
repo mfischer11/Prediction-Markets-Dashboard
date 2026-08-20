@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Settings - Prediction Market Dashboard</title>
+{% import "_macros.html" as macros %}
+<style>
+  body { font-family: Calibri, 'Segoe UI', Arial, sans-serif; background: #F3F4F6; margin: 0; padding: 0; }
+  .nav { background: #14161A; padding: 14px 24px; }
+  .nav a { color: #FFFFFF; text-decoration: none; font-weight: 700; margin-right: 24px; font-size: 14px; }
+  .nav a.active { color: #7DA7FF; }
+  .container { max-width: 1200px; margin: 24px auto; padding: 0 20px; }
+  h1 { font-size: 22px; color: #14161A; }
+  .subtitle { color: #6B7280; font-size: 13px; margin-bottom: 16px; }
+  .message { background: #E2EFDA; border: 1px solid #A9D18E; color: #375623; padding: 10px 14px;
+             border-radius: 4px; margin-bottom: 16px; font-size: 13px; }
+  table.config { width: 100%; border-collapse: collapse; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  table.config th { background: #14161A; color: #FFFFFF; font-size: 12px; text-align: left; padding: 8px 10px; }
+  table.config td { padding: 6px 8px; border-bottom: 1px solid #EEF0F2; vertical-align: middle; }
+  table.config input[type=text], table.config select {
+    width: 100%; box-sizing: border-box; padding: 5px 6px; font-size: 13px; border: 1px solid #D0D3D8; border-radius: 3px;
+    font-family: inherit;
+  }
+  .url-col { min-width: 320px; }
+  .narrow-col { width: 90px; }
+  .btn { display: inline-block; padding: 9px 18px; border-radius: 4px; border: none; font-weight: 700;
+         font-size: 13px; cursor: pointer; text-decoration: none; }
+  .btn-primary { background: #1652F0; color: #FFFFFF; }
+  .btn-secondary { background: #E5E7EB; color: #14161A; }
+  .btn-run { background: #0E8A3E; color: #FFFFFF; }
+  .row-actions button { background: none; border: none; cursor: pointer; font-size: 15px; padding: 2px 6px; color: #44546A; }
+  .row-actions button:hover { color: #14161A; }
+  .toolbar { margin-top: 16px; display: flex; gap: 10px; }
+  .help { font-size: 12px; color: #6B7280; margin: 6px 0 16px 0; line-height: 1.5; }
+</style>
+</head>
+<body>
+  <div class="nav">
+    <a href="/">Dashboard</a>
+    <a href="/settings" class="active">Settings</a>
+  </div>
+  <div class="container">
+    <h1>Markets you track</h1>
+    <div class="subtitle">Add, remove, or reorder rows below, then Save (or Save &amp; Run). Report order matches this list's order top-to-bottom - use the arrows to reorder. The dashboard refreshes itself automatically on a timer - "Save &amp; Run Report" just gets your latest edit live immediately instead of waiting.</div>
+
+    {% if not auth_enabled %}
+    <div class="message" style="background:#FCE4D6; border-color:#F4B183; color:#7A3E00;">
+      This settings page is currently <b>open to anyone with the link</b> - set the
+      <code>DASHBOARD_USER</code> / <code>DASHBOARD_PASS</code> environment variables on your host to
+      password-protect it. The main dashboard view stays public either way.
+    </div>
+    {% endif %}
+
+    {% if message %}
+    <div class="message">{{ message }}</div>
+    {% endif %}
+
+    <form id="config-form" method="POST" action="/settings/save">
+      <table class="config" id="config-table">
+        <thead>
+          <tr>
+            <th style="width:50px;">On</th>
+            <th style="width:90px;">Platform</th>
+            <th class="url-col">URL</th>
+            <th style="width:100px;">Display</th>
+            <th style="width:160px;">Title Override</th>
+            <th style="width:100px;">Time Range</th>
+            <th style="width:200px;">Notes</th>
+            <th style="width:90px;">Order</th>
+            <th style="width:40px;"></th>
+          </tr>
+        </thead>
+        <tbody id="config-body">
+          {% for row in rows %}
+          {{ macros.config_row(row, "r" ~ loop.index0) }}
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="help">
+        <b>Display</b>: AUTO picks chart vs. table automatically; override with CHART or TABLE.
+        <b>Time Range</b>: AUTO (recommended) sizes the chart window to how long the market's been open; override with 24H/7D/30D/90D/ALL/CURRENT.
+        <b>Notes</b> supports manual overrides: <code>ticker=...</code>, <code>market=...</code>, <code>market_id=...</code>, <code>event_id=...</code>.
+      </div>
+
+      <div class="toolbar">
+        <button type="button" class="btn btn-secondary" onclick="addRow()">+ Add row</button>
+        <button type="submit" name="action" value="save" class="btn btn-secondary">Save</button>
+        <button type="submit" name="action" value="save_and_run" class="btn btn-run">Save &amp; Run Report</button>
+      </div>
+    </form>
+  </div>
+
+<script>
+let newRowCounter = 0;
+
+function addRow() {
+  const tbody = document.getElementById('config-body');
+  const token = 'new-' + Date.now() + '-' + (newRowCounter++);
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td style="text-align:center;">
+      <input type="hidden" name="row_token" value="${token}">
+      <input type="checkbox" name="enabled_tokens" value="${token}" checked>
+    </td>
+    <td>
+      <select name="platform">
+        <option value="Polymarket">Polymarket</option>
+        <option value="Kalshi">Kalshi</option>
+      </select>
+    </td>
+    <td class="url-col"><input type="text" name="url" placeholder="https://..."></td>
+    <td>
+      <select name="display_type">
+        <option value="AUTO" selected>AUTO</option>
+        <option value="CHART">CHART</option>
+        <option value="TABLE">TABLE</option>
+      </select>
+    </td>
+    <td><input type="text" name="title_override"></td>
+    <td>
+      <select name="time_range">
+        <option value="AUTO" selected>AUTO</option>
+        <option value="24H">24H</option>
+        <option value="7D">7D</option>
+        <option value="30D">30D</option>
+        <option value="90D">90D</option>
+        <option value="ALL">ALL</option>
+        <option value="CURRENT">CURRENT</option>
+      </select>
+    </td>
+    <td><input type="text" name="notes"></td>
+    <td class="row-actions" style="text-align:center;">
+      <button type="button" onclick="moveRow(this, -1)" title="Move up">&#9650;</button>
+      <button type="button" onclick="moveRow(this, 1)" title="Move down">&#9660;</button>
+    </td>
+    <td class="row-actions" style="text-align:center;">
+      <button type="button" onclick="deleteRow(this)" title="Delete">&times;</button>
+    </td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function moveRow(btn, direction) {
+  const tr = btn.closest('tr');
+  const tbody = tr.parentNode;
+  if (direction === -1 && tr.previousElementSibling) {
+    tbody.insertBefore(tr, tr.previousElementSibling);
+  } else if (direction === 1 && tr.nextElementSibling) {
+    tbody.insertBefore(tr.nextElementSibling, tr);
+  }
+}
+
+function deleteRow(btn) {
+  const tr = btn.closest('tr');
+  tr.parentNode.removeChild(tr);
+}
+</script>
+</body>
+</html>

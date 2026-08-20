@@ -1,0 +1,39 @@
+{% macro config_row(row, token) %}
+<tr>
+  <td style="text-align:center;">
+    <input type="hidden" name="row_token" value="{{ token }}">
+    <input type="checkbox" name="enabled_tokens" value="{{ token }}" {% if row.enabled %}checked{% endif %}>
+  </td>
+  <td>
+    <select name="platform">
+      <option value="Polymarket" {% if row.platform == "Polymarket" %}selected{% endif %}>Polymarket</option>
+      <option value="Kalshi" {% if row.platform == "Kalshi" %}selected{% endif %}>Kalshi</option>
+    </select>
+  </td>
+  <td class="url-col"><input type="text" name="url" value="{{ row.url or '' }}" placeholder="https://..."></td>
+  <td>
+    <select name="display_type">
+      <option value="AUTO" {% if row.display_type == "AUTO" or not row.display_type %}selected{% endif %}>AUTO</option>
+      <option value="CHART" {% if row.display_type == "CHART" %}selected{% endif %}>CHART</option>
+      <option value="TABLE" {% if row.display_type == "TABLE" %}selected{% endif %}>TABLE</option>
+    </select>
+  </td>
+  <td><input type="text" name="title_override" value="{{ row.title_override or '' }}"></td>
+  <td>
+    <select name="time_range">
+      {% set current_range = (row.time_range or "AUTO")|upper %}
+      {% for opt in ["AUTO", "24H", "7D", "30D", "90D", "ALL", "CURRENT"] %}
+      <option value="{{ opt }}" {% if current_range == opt %}selected{% endif %}>{{ opt }}</option>
+      {% endfor %}
+    </select>
+  </td>
+  <td><input type="text" name="notes" value="{{ row.notes or '' }}"></td>
+  <td class="row-actions" style="text-align:center;">
+    <button type="button" onclick="moveRow(this, -1)" title="Move up">&#9650;</button>
+    <button type="button" onclick="moveRow(this, 1)" title="Move down">&#9660;</button>
+  </td>
+  <td class="row-actions" style="text-align:center;">
+    <button type="button" onclick="deleteRow(this)" title="Delete">&times;</button>
+  </td>
+</tr>
+{% endmacro %}
